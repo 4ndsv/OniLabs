@@ -1,0 +1,48 @@
+@echo off
+
+set fullFilePath=%1
+set msBuildDir="C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\MSBuild\Current"
+set nugetDir="C:\Users\andreviana\.nuget\packages"
+set targetDir=%cd%
+set line=-------------------------------------------------------------------------------------
+
+if [%1]==[] set fullFilePath="C:\$scr\OniLabs\projectOne\projectOne\packages.config"
+if not exist %fullFilePath% goto :errorFileNotFound
+
+echo %line%
+echo Creating temporary project
+echo %line%
+dotnet new console -n TempProject --force -v q -no-update-check
+echo Done! 
+
+setlocal enabledelayedexpansion
+for /f "usebackq skip=1 tokens=2,3,4 delims==" %%a in (%fullFilePath%) do (
+    set "pkgId=%%a"
+    for /f "tokens=1" %%z in ("!pkgId!") do set "pkgName=%%~z"
+
+    set "pkgVersion=%%b"
+    for /f "tokens=1" %%z in ("!pkgVersion!") do set "pkgVersion=%%~z"
+
+    set "targetFramework=%%c"
+    for /f "tokens=1" %%z in ("!targetFramework!") do set "targetFramework=%%~z"
+
+    echo %line%
+    echo Retrieving package: !pkgName! Version: !pkgVersion! Framework: !targetFramework!
+    echo %line%
+    dotnet add TempProject package !pkgName! -v !pkgVersion!  -f !targetFramework! --no-restore
+
+    xcopy %nugetDir%\!pkgName!\ %targetDir%\packages\!pkgName!\ /y /h /e
+) 
+
+goto errorsSectionBypass
+
+:errorFileNotFound 
+echo The informed file %fullFilePath% does not exist. & goto :close
+
+:errorsSectionBypass
+
+:close
+echo %line%
+echo Press any key to close.
+pause>nul
+exit
